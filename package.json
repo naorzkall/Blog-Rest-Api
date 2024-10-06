@@ -1,0 +1,26 @@
+{
+  "name": "restapi",
+  "version": "1.0.0",
+  "description": "a Restful Api project",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon app.js",
+    "start-server": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "author": "Naorz Kall",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "express": "^4.19.2",
+    "express-validator": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.5.3",
+    "multer": "^1.4.5-lts.1"
+  }
+}
