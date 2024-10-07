@@ -66,9 +66,9 @@ exports.login = (req,res,next)=>{
             }
             /*   generate a new token
                - jwt.sign() method creates a new signature and packs that into a new json web token
-               - we can add any we want into the token like (email,userId ....etc)
+               - we can add any info we want into the token like (email,userId ....etc)
                - should not store the raw password, beacuse that would be returned to the frontend (not ideal)
-               - second argument is the secret => the private key which used signing
+               - second argument is the secret => the (private key) which used signing
                     and that is now only known to the server, and therefore you can't fake that token on the client side
                - for secret ypu want to use a longer string
                - third argument is the expired time (the token become invalid after that time)
