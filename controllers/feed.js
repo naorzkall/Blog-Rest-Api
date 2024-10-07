@@ -4,6 +4,7 @@ const path = require('path');
 const { validationResult } = require('express-validator');
 
 const Post = require('../models/post');
+const User = require('../models/User');
 
 exports.getPosts = (req, res, next) => {
     /*  
@@ -65,22 +66,33 @@ exports.createPost = (req, res, next) => {
     const imageUrl = req.file.path.replace("\\" ,"/");
     const title = req.body.title;
     const content = req.body.content; 
+    let creator;
 
     //create post
     const post = new Post({
         title: title,
         content: content,
         imageUrl: imageUrl,
-        creator: { name: 'Naorz Kall' }
+        creator: req.userId
       });
+
     // save to mongodb
     post.save()
         .then(result => {
-        // 200 is just success, 201 is a code to tell the clinet that a resourse was created
-        res.status(201).json({
-            message: 'Post created successfully!',
-            post: result
-        });
+            return User.findById(req.userId);
+        })
+        .then(user=>{
+            creator = user;
+            user.posts.push(post);
+            return user.save();
+        })
+        .then(result=>{
+            // 200 is just success, 201 is a code to tell the clinet that a resourse was created
+            res.status(201).json({
+                message: 'Post created successfully!',
+                post: post,
+                creator:{_id:creator._id,name:creator.name}
+            });
         })
         .catch(err => {
             if(!err.statusCode){
@@ -92,7 +104,6 @@ exports.createPost = (req, res, next) => {
                 so we have to use next()
             */
             next();
-
         });
 };
 
