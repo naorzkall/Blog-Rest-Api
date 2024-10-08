@@ -159,6 +159,12 @@ exports.updatePost = (req,res,next)=>{
                 error.statusCode = 404;
                 throw error;
             }
+            // check if the user edit a post belong to him
+            if(post.creator.toString() !== req.userId){
+                const error = new Error('Not authorized!');
+                error.statusCode=404;
+                throw error;
+            }
             if(imageUrl !== post.imageUrl){
                 clearImage(post.imageUrl);
             }
@@ -186,6 +192,12 @@ exports.deletePost = (req,res,next)=>{
             if(!post){
                 const error  = new Error('Could not find post.');
                 error.statusCode = 404;
+                throw error;
+            }
+            // check if the user delete a post belong to him
+            if(post.creator.toString() !== req.userId){
+                const error = new Error('Not authorized!');
+                error.statusCode=404;
                 throw error;
             }
             // check login user
