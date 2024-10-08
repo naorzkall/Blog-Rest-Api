@@ -205,7 +205,15 @@ exports.deletePost = (req,res,next)=>{
             return Post.findByIdAndDelete(postId);
         })
         .then(result => {
-            // console.log(result);
+            return User.findById(req.userId);
+        })
+        .then(user=>{
+            user.posts.pull(postId);
+            return user.save();
+        })
+        .then(result=>{
+            //console.log(result);
+
             res.status(200).json({
                 message: 'Delete post done.'
             })
@@ -216,7 +224,6 @@ exports.deletePost = (req,res,next)=>{
             }
             next();
         });
-
 }
 
 const clearImage = filePath => {
