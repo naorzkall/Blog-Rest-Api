@@ -30,7 +30,7 @@ exports.getPosts = async (req, res, next) => {
     }
 };
 
-exports.createPost = (req, res, next) => {
+exports.createPost = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         const error = new Error('Validation failed, enterd data is incorrect.');
@@ -56,8 +56,6 @@ exports.createPost = (req, res, next) => {
     const imageUrl = req.file.path.replace("\\" ,"/");
     const title = req.body.title;
     const content = req.body.content; 
-    let creator;
-
     //create post
     const post = new Post({
         title: title,
@@ -65,63 +63,43 @@ exports.createPost = (req, res, next) => {
         imageUrl: imageUrl,
         creator: req.userId
       });
-
-    // save to mongodb
-    post.save()
-        .then(result => {
-            return User.findById(req.userId);
-        })
-        .then(user=>{
-            creator = user;
-            user.posts.push(post);
-            return user.save();
-        })
-        .then(result=>{
-            // 200 is just success, 201 is a code to tell the clinet that a resourse was created
-            res.status(201).json({
-                message: 'Post created successfully!',
-                post: post,
-                creator:{_id:creator._id,name:creator.name}
-            });
-        })
-        .catch(err => {
-            if(!err.statusCode){
-                err.statusCode = 500;
-            }
-            /* 
-                and we learned that since we inside a promise chain(asynch code snippet),
-                throwing an error will not do the trick
-                so we have to use next()
-            */
-            next();
+    try{
+        await post.save();
+        const user = await User.findById(req.userId);
+        user.posts.push(post);
+        await user.save();
+        res.status(201).json({
+          message: 'Post created successfully!',
+          post: post,
+          creator: { _id: user._id, name: user.name }
         });
+    }catch(err){
+        if (!err.statusCode) {
+            err.statusCode = 500;
+          }
+          next(err);
+    }
 };
 
-exports.getPost = (req,res,next)=>{
+exports.getPost = async(req,res,next)=>{
     const postId = req.params.postId;
-    Post.findById(postId)
-        .then(post => {
-            if(!post){
-                const error  = new Error('Could not find post.');
-                error.statusCode = 404;
-                /* - why we through an error if we are on Asynch code snnipt instead next()?
-                        when we throw an error here the error will be passed as an error to the catch block 
-                 */
-                throw error;
-            }
-            res.status(200).json({message: 'Post fetched.',post : post})
-        })
-        .catch(err => {
-            if(!err.statusCode){
-                err.statusCode = 500;
-            }
-            next();
-            
-        });
-
+    const post = await Post.findById(postId);
+    try {
+        if (!post) {
+          const error = new Error('Could not find post.');
+          error.statusCode = 404;
+          throw error;
+        }
+        res.status(200).json({ message: 'Post fetched.', post: post });
+      } catch (err) {
+        if (!err.statusCode) {
+          err.statusCode = 500;
+        }
+        next(err);
+      }
 }
 
-exports.updatePost = (req,res,next)=>{
+exports.updatePost = async (req,res,next)=>{
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         const error = new Error('Validation failed, enterd data is incorrect.');
@@ -142,82 +120,68 @@ exports.updatePost = (req,res,next)=>{
         error.statusCode = 422;
         throw error;
     }
-    Post.findById(postId)
-        .then(post => {
-            if(!post){
-                const error  = new Error('Could not find post.');
-                error.statusCode = 404;
-                throw error;
-            }
-            // check if the user edit a post belong to him
-            if(post.creator.toString() !== req.userId){
-                const error = new Error('Not authorized!');
-                error.statusCode=404;
-                throw error;
-            }
-            if(imageUrl !== post.imageUrl){
-                clearImage(post.imageUrl);
-            }
-            post.title = title;
-            post.imageUrl = imageUrl;
-            post.content = content;
-            return post.save();
-        })
-        .then(result => {
-            res.status(200).json({message:'Post updated!', post: result })
-        })
-        .catch(err => {
-            if(!err.statusCode){
-                err.statusCode = 500;
-            }
-            next(err);
-        });
-
+    try{
+        const post = await Post.findById(postId);
+        if(!post){
+            const error  = new Error('Could not find post.');
+            error.statusCode = 404;
+            throw error;
+        }
+        // check if the user edit a post belong to him
+        if(post.creator.toString() !== req.userId){
+            const error = new Error('Not authorized!');
+            error.statusCode=404;
+            throw error;
+        }
+        if(imageUrl !== post.imageUrl){
+            clearImage(post.imageUrl);
+        }
+        post.title = title;
+        post.imageUrl = imageUrl;
+        post.content = content;
+        const result = await post.save();
+        res.status(200).json({ message: 'Post updated!', post: result });
+    }catch(err){
+        if (!err.statusCode) {
+            err.statusCode = 500;
+          }
+          next(err);
+    }
 }
 
-exports.deletePost = (req,res,next)=>{
+exports.deletePost = async(req,res,next)=>{
     const postId = req.params.postId;
-    Post.findById(postId)
-        .then(post => {
-            if(!post){
-                const error  = new Error('Could not find post.');
-                error.statusCode = 404;
-                throw error;
-            }
-            // check if the user delete a post belong to him
-            if(post.creator.toString() !== req.userId){
-                const error = new Error('Not authorized!');
-                error.statusCode=404;
-                throw error;
-            }
-            // check login user
-            clearImage(post.imageUrl);
-            return Post.findByIdAndDelete(postId);
-        })
-        .then(result => {
-            return User.findById(req.userId);
-        })
-        .then(user=>{
-            user.posts.pull(postId);
-            return user.save();
-        })
-        .then(result=>{
-            //console.log(result);
+    try{
+        const post = await Post.findById(postId);
+        if (!post) {
+            const error = new Error('Could not find post.');
+            error.statusCode = 404;
+            throw error;
+        }
+        if (post.creator.toString() !== req.userId) {
+            const error = new Error('Not authorized!');
+            error.statusCode = 403;
+            throw error;
+        }
+        // check login user
+        clearImage(post.imageUrl);
+        await Post.findByIdAndDelete(postId);
 
-            res.status(200).json({
-                message: 'Delete post done.'
-            })
-        })
-        .catch(err => {
-            if(!err.statusCode){
-                err.statusCode = 500;
-            }
-            next();
-        });
+        const user = await User.findById(req.userId);
+        user.posts.pull(postId);
+        await user.save();
+    
+        res.status(200).json({ message: 'Deleted post.' });
+    }catch(err){
+        if (!err.statusCode) {
+        err.statusCode = 500;
+        }
+        next(err);
+    }
 }
 
 const clearImage = filePath => {
     // '..' to up one foleder because we are not on the root folder, we are the controller folder
     filePath = path.join(__dirname,'..' ,filePath);
-    fs.unlink(filePath, err => {console.log(err+'gg');});
+    fs.unlink(filePath, err => {console.log(err);});
 };
