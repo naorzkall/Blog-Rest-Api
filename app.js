@@ -6,6 +6,7 @@ const multer = require('multer');
 
 const feedRoutes = require('./routes/feed');
 const authRoutes = require('./routes/auth');
+const { Socket } = require('socket.io');
 
 const app = express();
 
@@ -78,6 +79,15 @@ mongoose
   )
   .then(result => {
     console.log('connected to database');
-    app.listen(8080);
+    const server = app.listen(8080);
+    const io = require('socket.io')(server, {
+      cors: {
+        origin: "*", 
+        methods: ["GET", "POST","PUT","PATCH","DELETE"] 
+      }
+    });
+    io.on('connection',socket=>{
+      console.log('Client connected');
+    });
   })
   .catch(err => console.log(err));
