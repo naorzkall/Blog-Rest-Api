@@ -129,14 +129,14 @@ exports.updatePost = async (req,res,next)=>{
         throw error;
     }
     try{
-        const post = await Post.findById(postId);
+        const post = await Post.findById(postId).populate('creator');
         if(!post){
             const error  = new Error('Could not find post.');
             error.statusCode = 404;
             throw error;
         }
         // check if the user edit a post belong to him
-        if(post.creator.toString() !== req.userId){
+        if(post.creator._id.toString() !== req.userId){
             const error = new Error('Not authorized!');
             error.statusCode=404;
             throw error;
@@ -148,6 +148,9 @@ exports.updatePost = async (req,res,next)=>{
         post.imageUrl = imageUrl;
         post.content = content;
         const result = await post.save();
+
+        io.getIO().emit('posts',{action:'update',post:result })
+
         res.status(200).json({ message: 'Post updated!', post: result });
     }catch(err){
         if (!err.statusCode) {
