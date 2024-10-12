@@ -3,6 +3,7 @@ const path = require('path');
 
 const { validationResult } = require('express-validator');
 
+const io = require('../socket');
 const Post = require('../models/post');
 const User = require('../models/User');
 
@@ -16,7 +17,11 @@ exports.getPosts = async (req, res, next) => {
     const perPage = 2;
     try{
         const totalItems = await Post.find().countDocuments();
-        const posts = await Post.find().skip((currentPage - 1) * perPage).limit(perPage);
+        const posts = await Post.find()
+            .populate('creator')
+            .skip((currentPage - 1) * perPage)
+            .limit(perPage);
+
         res.status(200).json({
             message: 'Fetched posts successfully.',
             posts: posts,
@@ -68,6 +73,9 @@ exports.createPost = async (req, res, next) => {
         const user = await User.findById(req.userId);
         user.posts.push(post);
         await user.save();
+        // before send a response, I wanna inform other users using scoket.io using my io object
+        io.getIO().emit( 'posts' , { action:'create', post:{...post._doc,creator:{_id:req.userId, name: user.name }} })
+
         res.status(201).json({
           message: 'Post created successfully!',
           post: post,
